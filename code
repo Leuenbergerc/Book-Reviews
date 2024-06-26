@@ -1,0 +1,65 @@
+
+
+glimpse(sales2019) # 5:5000, total_purchsed and user_submitted = null
+
+complete_sales <- sales2019 %>% 
+  filter(
+    !is.na(user_submitted_review)
+  ) 
+# rows are now 4115
+
+purchase_mean <- complete_sales %>%
+  filter(!is.na(total_purchased)) %>%
+  pull(total_purchased) %>%
+  mean()
+
+complete_sales <- complete_sales %>%
+  mutate(
+    total_purchased= if_else(is.na(total_purchased),
+                             purchase_mean,
+                             total_purchased)
+  ) #added average to the null values
+
+is_positive <- function(review) {
+  review_positive = case_when(
+    str_detect(review, "Awesome") ~ TRUE,
+    str_detect(review, "OK") ~ TRUE,
+    str_detect(review, "Never") ~ TRUE,
+    str_detect(review, "a lot") ~ TRUE,
+    TRUE ~ FALSE # The review did not contain any of the above phrases
+  )
+}
+
+complete_sales <- complete_sales %>% 
+  mutate(
+    is_positive = unlist(map(user_submitted_review, is_positive))
+  )
+#Was the new book program effective in increasing book sales?
+
+library(lubridate)
+
+complete_sales <- complete_sales %>% 
+  mutate(
+    date_status = if_else(mdy(date) < ymd("2019/07/01"), "Pre", "Post")
+  )
+
+
+complete_sales %>% 
+  group_by(date_status) %>% 
+  summarize(
+    books_purchased = sum(total_purchased)
+  ) # No, it as not effective in increasing book sales. post 8190 pre 8211
+
+
+complete_sales %>% 
+  group_by(date_status, customer_type) %>% 
+  summarize(
+    books_purchased = sum(total_purchased))
+#There was an increase in business purchased and a decrease in individual purchases.
+
+complete_sales %>%
+  group_by(date_status) %>%
+  summarise(
+    num_positive_reviews = sum(is_positive)
+    ) #there were 3 more positive revies after July 1, 2019. 
+  
